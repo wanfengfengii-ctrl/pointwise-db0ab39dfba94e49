@@ -1,0 +1,21 @@
+{
+  "plant": "河湾",
+  "day": "2026-11-18",
+  "outlets": ["A", "B"],
+  "batch": "白班",
+  "original": [
+    {"outlet": "A", "ml": 5},
+    {"outlet": "A", "ml": 7},
+    {"outlet": "B", "ml": 3}
+  ],
+  "correction": [
+    {"outlet": "A", "ml": 5},
+    {"outlet": "A", "ml": 8},
+    {"outlet": "B", "ml": 3}
+  ],
+  "followup_batch": "夜班",
+  "followup": [
+    {"outlet": "A", "ml": 5},
+    {"outlet": "A", "ml": 7}
+  ]
+}

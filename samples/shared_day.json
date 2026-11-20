@@ -1,0 +1,40 @@
+{
+  "plant": "河湾",
+  "day": "2026-11-18",
+  "outlets": ["A", "B"],
+  "cases": {
+    "forced": {
+      "slots": [{"ml": 5, "outlets": ["A", "B"]}, {"ml": 5, "outlets": ["A"]}],
+      "bounds": {"A": {"min_ml": 0, "max_ml": 5}, "B": {"min_ml": 0, "max_ml": 5}},
+      "expected": [[1, 5, [[1, "B", 5]]], [2, 5, [[2, "A", 5]]]]
+    },
+    "upper_infeasible": {
+      "slots": [{"ml": 5, "outlets": ["A", "B"]}, {"ml": 5, "outlets": ["A"]}],
+      "bounds": {"A": {"min_ml": 0, "max_ml": 5}, "B": {"min_ml": 0, "max_ml": 4}},
+      "expected": null
+    },
+    "lower_split": {
+      "slots": [{"ml": 5, "outlets": ["A", "B"]}],
+      "bounds": {"A": {"min_ml": 2, "max_ml": 5}, "B": {"min_ml": 3, "max_ml": 5}},
+      "expected": [[1, 5, [[1, "A", 2], [2, "B", 3]]]]
+    },
+    "lower_infeasible": {
+      "slots": [{"ml": 5, "outlets": ["A"]}],
+      "bounds": {"A": {"min_ml": 0, "max_ml": 5}, "B": {"min_ml": 1, "max_ml": 5}},
+      "expected": null
+    },
+    "multiple": {
+      "slots": [{"ml": 0, "outlets": []}, {"ml": 5, "outlets": ["A", "B"]}, {"ml": 5, "outlets": ["A", "B"]}],
+      "bounds": {"A": {"min_ml": 5, "max_ml": 5}, "B": {"min_ml": 5, "max_ml": 5}},
+      "examples": [
+        [[1, 0, []], [2, 5, [[1, "B", 5]]], [3, 5, [[2, "A", 5]]]],
+        [[1, 0, []], [2, 5, [[1, "A", 5]]], [3, 5, [[2, "B", 5]]]]
+      ]
+    },
+    "equal": {
+      "slots": [{"ml": 5, "outlets": ["A"]}, {"ml": 0, "outlets": []}, {"ml": 5, "outlets": ["A"]}],
+      "bounds": {"A": {"min_ml": 10, "max_ml": 10}},
+      "expected": [[1, 5, [[1, "A", 5]]], [2, 0, []], [3, 5, [[2, "A", 5]]]]
+    }
+  }
+}
