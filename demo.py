@@ -8,7 +8,7 @@ from closeout.results import get_result, initialize_closeout
 from dispatch.acknowledgments import confirm_receipt
 from dispatch.issuance import issue_report
 from dispatch.outbox import get_issued_report, initialize_outbox
-from intake.batches import accept_batch
+from intake.batches import accept_batch, accept_shared_batch
 from intake.outlets import register_outlet
 from intake.source_store import initialize_intake, open_source
 from posting.ledger import get_ledger_totals, post_report
@@ -39,6 +39,8 @@ def _scenario(case_id, data, expected, actual, downstream_expected, downstream_a
 def main():
     sample_path = Path(__file__).with_name('samples') / 'day.json'
     sample = json.loads(sample_path.read_text(encoding='utf-8'))
+    shared_sample = json.loads((Path(__file__).with_name('samples') / 'shared_day.json')
+                               .read_text(encoding='utf-8'))
     plant, day, batch = sample['plant'], sample['day'], sample['batch']
     with TemporaryDirectory() as directory:
         source_path = Path(directory) / 'source.sqlite3'
@@ -84,6 +86,17 @@ def main():
             night_posting = post_report(receiver, stage_report(receiver, night.envelope))
             confirm_receipt(source, 'R7', night_posting.receipt.to_payload())
 
+            shared = shared_sample['cases']['forced']
+            shared_revision = accept_shared_batch(
+                source, shared_sample['plant'], shared_sample['day'], '共表白班',
+                shared['slots'], shared['bounds'])
+            shared_result = close_batch(source, shared_revision)
+            shared_issued = issue_report(source, 'S1', shared_result.result_id)
+            _expect('共表暂存前监管账', {'rows': 5, 'ml': 27}, _measure(get_ledger_totals(receiver)))
+            shared_stage = stage_report(receiver, shared_issued.envelope)
+            _expect('共表暂存不计量', {'rows': 5, 'ml': 27}, _measure(get_ledger_totals(receiver)))
+
+        # 源仓已在上面关闭；以下只用监管仓原件入账并核账。
         with closing(open_receiver(receiver_path)) as receiver:
             audit = audit_report(receiver, 'R6')
             rows = [[row.ordinal, row.outlet, row.ml] for row in audit.original_rows]
@@ -101,6 +114,32 @@ def main():
             _expect('R7 差异', (), night_audit.discrepancies)
             _expect('双报送监管账', {'rows': 5, 'ml': 27}, _measure(get_ledger_totals(receiver)))
             print('断源重开后，R6 为 3 行 15 mL，R7 为 2 行 12 mL，核账均无差异。')
+
+        with closing(open_receiver(receiver_path)) as receiver:
+            shared_posting = post_report(receiver, shared_stage)
+            _expect('共表断源入账', [[1, 'B', 5], [2, 'A', 5]],
+                    [[r.ordinal, r.outlet, r.ml] for r in shared_posting.rows])
+
+        # 再次重开监管仓：只凭原件核对段去向与原回执。
+        with closing(open_receiver(receiver_path)) as receiver:
+            shared_audit = audit_report(receiver, 'S1')
+            forced_rows = [[r.ordinal, r.outlet, r.ml] for r in shared_audit.ledger_rows]
+            _scenario('case_shared_forced', {'slots': shared['slots'], 'bounds': shared['bounds']},
+                      [[1, 'B', 5], [2, 'A', 5]], forced_rows,
+                      {'rows': 2, 'ml': 10, 'differences': 0, 'original_receipt': True},
+                      {'rows': shared_audit.ledger_computed.row_count,
+                       'ml': shared_audit.ledger_computed.ml,
+                       'differences': len(shared_audit.discrepancies),
+                       'original_receipt': shared_audit.receipt == shared_posting.receipt},
+                      ['intake/shared.py', 'closeout/shared.py', 'dispatch/envelope.py',
+                       'posting/wire_format.py', 'review/reports.py'],
+                      '第 1 段 5 mL 全给 B，第 2 段 5 mL 全给 A，正式账两行 10 mL；'
+                      '关闭源仓后仅凭原件入账，重开监管仓仍可核出去向。')
+            _expect('共表段去向', ((1, 5, ((1, 'B', 5),)), (2, 5, ((2, 'A', 5),))),
+                    shared_audit.slot_allocations)
+            _expect('共表原回执', shared_posting.receipt, shared_audit.receipt)
+            _expect('三条监管账', {'rows': 7, 'ml': 37}, _measure(get_ledger_totals(receiver)))
+            print('共表 S1 断源入账为 2 行 10 mL：第 1 段去 B，第 2 段去 A；重开监管仓核账无差异。')
 
 
 if __name__ == '__main__':

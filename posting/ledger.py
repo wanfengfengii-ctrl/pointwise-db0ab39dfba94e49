@@ -6,7 +6,7 @@ from posting.receipts import PostingReceipt, create_receipt, get_receipt
 from posting.receiver_store import receiver_read, receiver_write
 from posting.report_totals import ReportTotals, summarize_rows
 from posting.staging import get_staged_report
-from posting.wire_format import ReportRow, decode_report
+from posting.wire_format import ReportRow, decode_any_report, decode_report
 
 
 @dataclass(frozen=True)
@@ -50,7 +50,7 @@ def post_report(db, stage_id):
         existing = get_posted_report(db, staged.report_id)
         if existing is not None:
             return existing
-        report = decode_report(staged)
+        report = decode_any_report(staged)
         totals = summarize_rows(report.rows)
         db.execute('INSERT INTO posted_reports (report_id, row_count, ml) VALUES (?, ?, ?)',
                    (report.report_id, totals.row_count, str(Decimal(totals.ml))))

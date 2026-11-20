@@ -67,3 +67,27 @@ def initialize_intake(db):
             ml TEXT NOT NULL,
             PRIMARY KEY (revision_id, ordinal)
         )''')
+        db.execute('''CREATE TABLE IF NOT EXISTS shared_revisions (
+            revision_id INTEGER PRIMARY KEY REFERENCES revisions(revision_id),
+            slot_count INTEGER NOT NULL CHECK (slot_count >= 0)
+        )''')
+        db.execute('''CREATE TABLE IF NOT EXISTS shared_slots (
+            revision_id INTEGER NOT NULL REFERENCES shared_revisions(revision_id),
+            ordinal INTEGER NOT NULL CHECK (ordinal > 0),
+            ml TEXT NOT NULL,
+            PRIMARY KEY (revision_id, ordinal)
+        )''')
+        db.execute('''CREATE TABLE IF NOT EXISTS shared_slot_outlets (
+            revision_id INTEGER NOT NULL,
+            ordinal INTEGER NOT NULL,
+            outlet TEXT NOT NULL,
+            PRIMARY KEY (revision_id, ordinal, outlet),
+            FOREIGN KEY (revision_id, ordinal) REFERENCES shared_slots(revision_id, ordinal)
+        )''')
+        db.execute('''CREATE TABLE IF NOT EXISTS shared_bounds (
+            revision_id INTEGER NOT NULL REFERENCES shared_revisions(revision_id),
+            outlet TEXT NOT NULL,
+            min_ml TEXT NOT NULL,
+            max_ml TEXT NOT NULL,
+            PRIMARY KEY (revision_id, outlet)
+        )''')
